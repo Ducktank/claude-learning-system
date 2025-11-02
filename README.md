@@ -30,13 +30,13 @@ The Claude Learning System is a framework for:
 
 **Automated (Recommended)**:
 ```bash
-curl -sSL https://raw.githubusercontent.com/YOUR_ORG/claude-learning-system/main/scripts/setup-learning-system.sh | bash
+curl -sSL https://raw.githubusercontent.com/Ducktank/claude-learning-system/main/scripts/setup-learning-system.sh | bash
 ```
 
 **Manual**:
 ```bash
 # Clone or download this repository
-git clone https://github.com/YOUR_ORG/claude-learning-system.git
+git clone https://github.com/Ducktank/claude-learning-system.git
 
 # Run installer
 cd claude-learning-system
