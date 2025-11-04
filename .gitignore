@@ -1,0 +1,23 @@
+# ==============================================================================
+# Claude Learning System - Git Ignore Rules
+# ==============================================================================
+# Append these rules to your project's .gitignore
+#
+# Usage:
+#   cat claude-learning-system/.gitignore.fragment >> .gitignore
+#
+# Or manually copy the rules below
+# ==============================================================================
+
+# Session Learnings (keep system structure, ignore content)
+docs/sessions/learnings/*.md
+docs/sessions/archive/*/
+
+# Keep directory structure
+!docs/sessions/learnings/.gitkeep
+!docs/sessions/archive/.gitkeep
+!docs/sessions/archive/README.md
+
+# ==============================================================================
+# End of Claude Learning System Rules
+# ==============================================================================
