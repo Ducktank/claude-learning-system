@@ -18,29 +18,47 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-# Script directory
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PACKAGE_ROOT="$(dirname "$SCRIPT_DIR")"
+# Detect execution mode
+if [ -n "${BASH_SOURCE[0]}" ] && [ -f "${BASH_SOURCE[0]}" ]; then
+    # Local execution mode
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    PACKAGE_ROOT="$(dirname "$SCRIPT_DIR")"
+    CURL_PIPE_MODE=false
+else
+    # Curl-pipe execution mode
+    SCRIPT_DIR=""
+    PACKAGE_ROOT=""
+    CURL_PIPE_MODE=true
+fi
+
 PROJECT_ROOT="$(pwd)"
+GITHUB_RAW_BASE="https://raw.githubusercontent.com/Ducktank/claude-learning-system/main"
 
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo -e "${BLUE}  Claude Learning System - Installer${NC}"
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
 echo -e "Project root: ${GREEN}$PROJECT_ROOT${NC}"
-echo -e "Package root: ${GREEN}$PACKAGE_ROOT${NC}"
-echo ""
 
-# Check if we're in the package directory itself
-if [ "$PROJECT_ROOT" = "$PACKAGE_ROOT" ]; then
-    echo -e "${YELLOW}⚠️  You're inside the learning system package directory.${NC}"
-    echo -e "${YELLOW}   Please run this from your target project root.${NC}"
-    echo ""
-    echo "Example:"
-    echo "  cd /path/to/your/project"
-    echo "  /path/to/claude-learning-system/scripts/setup-learning-system.sh"
-    exit 1
+if [ "$CURL_PIPE_MODE" = true ]; then
+    echo -e "Mode: ${YELLOW}Curl-pipe (downloading from GitHub)${NC}"
+else
+    echo -e "Package root: ${GREEN}$PACKAGE_ROOT${NC}"
+    echo -e "Mode: ${GREEN}Local execution${NC}"
+
+    # Check if we're in the package directory itself
+    if [ "$PROJECT_ROOT" = "$PACKAGE_ROOT" ]; then
+        echo -e "${YELLOW}⚠️  You're inside the learning system package directory.${NC}"
+        echo -e "${YELLOW}   Please run this from your target project root.${NC}"
+        echo ""
+        echo "Example:"
+        echo "  cd /path/to/your/project"
+        echo "  /path/to/claude-learning-system/scripts/setup-learning-system.sh"
+        exit 1
+    fi
 fi
+
+echo ""
 
 # Function: Prompt for yes/no
 ask_yes_no() {
@@ -135,24 +153,44 @@ echo -e "  ✅ Created scripts/"
 echo -e "  ✅ Created docs/sessions/{learnings,archive}"
 echo ""
 
-# Step 4: Copy learning system files
-echo -e "${BLUE}[4/7] Copying learning system files...${NC}"
+# Step 4: Copy/download learning system files
+echo -e "${BLUE}[4/7] Installing learning system files...${NC}"
 
-cp "$PACKAGE_ROOT/.claude/templates/session-learnings.md" .claude/templates/
-echo -e "  ✅ Copied session-learnings.md template"
+if [ "$CURL_PIPE_MODE" = true ]; then
+    # Download from GitHub
+    curl -sSL "$GITHUB_RAW_BASE/.claude/templates/session-learnings.md" -o .claude/templates/session-learnings.md
+    echo -e "  ✅ Downloaded session-learnings.md template"
 
-cp "$PACKAGE_ROOT/.claude/commands/capture-learnings.md" .claude/commands/
-echo -e "  ✅ Copied capture-learnings slash command"
+    curl -sSL "$GITHUB_RAW_BASE/.claude/commands/capture-learnings.md" -o .claude/commands/capture-learnings.md
+    echo -e "  ✅ Downloaded capture-learnings slash command"
 
-cp "$PACKAGE_ROOT/scripts/map-learnings-to-claude.py" scripts/
-echo -e "  ✅ Copied map-learnings-to-claude.py"
+    curl -sSL "$GITHUB_RAW_BASE/scripts/map-learnings-to-claude.py" -o scripts/map-learnings-to-claude.py
+    echo -e "  ✅ Downloaded map-learnings-to-claude.py"
 
-cp "$PACKAGE_ROOT/scripts/archive-old-learnings.sh" scripts/
-echo -e "  ✅ Copied archive-old-learnings.sh"
+    curl -sSL "$GITHUB_RAW_BASE/scripts/archive-old-learnings.sh" -o scripts/archive-old-learnings.sh
+    echo -e "  ✅ Downloaded archive-old-learnings.sh"
 
-if [ -f "$PACKAGE_ROOT/scripts/add-learning-markers.sh" ]; then
-    cp "$PACKAGE_ROOT/scripts/add-learning-markers.sh" scripts/
-    echo -e "  ✅ Copied add-learning-markers.sh"
+    if curl -sSL "$GITHUB_RAW_BASE/scripts/add-learning-markers.sh" -o scripts/add-learning-markers.sh 2>/dev/null; then
+        echo -e "  ✅ Downloaded add-learning-markers.sh"
+    fi
+else
+    # Copy from local filesystem
+    cp "$PACKAGE_ROOT/.claude/templates/session-learnings.md" .claude/templates/
+    echo -e "  ✅ Copied session-learnings.md template"
+
+    cp "$PACKAGE_ROOT/.claude/commands/capture-learnings.md" .claude/commands/
+    echo -e "  ✅ Copied capture-learnings slash command"
+
+    cp "$PACKAGE_ROOT/scripts/map-learnings-to-claude.py" scripts/
+    echo -e "  ✅ Copied map-learnings-to-claude.py"
+
+    cp "$PACKAGE_ROOT/scripts/archive-old-learnings.sh" scripts/
+    echo -e "  ✅ Copied archive-old-learnings.sh"
+
+    if [ -f "$PACKAGE_ROOT/scripts/add-learning-markers.sh" ]; then
+        cp "$PACKAGE_ROOT/scripts/add-learning-markers.sh" scripts/
+        echo -e "  ✅ Copied add-learning-markers.sh"
+    fi
 fi
 
 # Make scripts executable
@@ -228,7 +266,11 @@ if [ -f "Makefile" ]; then
         echo -e "  ${GREEN}✅ Makefile already has learning targets${NC}"
     else
         if ask_yes_no "Append learning targets to Makefile?" "y"; then
-            cat "$PACKAGE_ROOT/Makefile.fragment" >> Makefile
+            if [ "$CURL_PIPE_MODE" = true ]; then
+                curl -sSL "$GITHUB_RAW_BASE/Makefile.fragment" >> Makefile
+            else
+                cat "$PACKAGE_ROOT/Makefile.fragment" >> Makefile
+            fi
             echo -e "  ${GREEN}✅ Added learning targets to Makefile${NC}"
         else
             echo -e "  ${YELLOW}   Skipped Makefile integration${NC}"
@@ -237,7 +279,11 @@ if [ -f "Makefile" ]; then
     fi
 else
     if ask_yes_no "Create Makefile with learning targets?" "y"; then
-        cp "$PACKAGE_ROOT/Makefile.fragment" Makefile
+        if [ "$CURL_PIPE_MODE" = true ]; then
+            curl -sSL "$GITHUB_RAW_BASE/Makefile.fragment" -o Makefile
+        else
+            cp "$PACKAGE_ROOT/Makefile.fragment" Makefile
+        fi
         echo -e "  ${GREEN}✅ Created Makefile with learning targets${NC}"
     else
         echo -e "  ${YELLOW}   Skipped Makefile creation${NC}"
@@ -256,7 +302,11 @@ if [ -f ".gitignore" ]; then
     else
         if ask_yes_no "Append learning ignore rules to .gitignore?" "y"; then
             echo "" >> .gitignore
-            cat "$PACKAGE_ROOT/.gitignore.fragment" >> .gitignore
+            if [ "$CURL_PIPE_MODE" = true ]; then
+                curl -sSL "$GITHUB_RAW_BASE/.gitignore.fragment" >> .gitignore
+            else
+                cat "$PACKAGE_ROOT/.gitignore.fragment" >> .gitignore
+            fi
             echo -e "  ${GREEN}✅ Added learning rules to .gitignore${NC}"
         else
             echo -e "  ${YELLOW}   Skipped .gitignore update${NC}"
@@ -264,7 +314,11 @@ if [ -f ".gitignore" ]; then
     fi
 else
     if ask_yes_no "Create .gitignore with learning rules?" "y"; then
-        cp "$PACKAGE_ROOT/.gitignore.fragment" .gitignore
+        if [ "$CURL_PIPE_MODE" = true ]; then
+            curl -sSL "$GITHUB_RAW_BASE/.gitignore.fragment" -o .gitignore
+        else
+            cp "$PACKAGE_ROOT/.gitignore.fragment" .gitignore
+        fi
         echo -e "  ${GREEN}✅ Created .gitignore with learning rules${NC}"
     else
         echo -e "  ${YELLOW}   Skipped .gitignore creation${NC}"
@@ -300,8 +354,12 @@ else
 fi
 echo ""
 echo "4. Read the documentation:"
-echo "   cat $PACKAGE_ROOT/README.md"
-echo "   cat $PACKAGE_ROOT/INTEGRATION.md"
+if [ "$CURL_PIPE_MODE" = true ]; then
+    echo "   https://github.com/Ducktank/claude-learning-system"
+else
+    echo "   cat $PACKAGE_ROOT/README.md"
+    echo "   cat $PACKAGE_ROOT/INTEGRATION.md"
+fi
 echo ""
 
 if [ "$backup_needed" = true ]; then
